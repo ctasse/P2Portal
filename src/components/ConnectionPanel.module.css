@@ -1,0 +1,151 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--color-text);
+}
+
+.peerIdBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.peerId {
+  flex: 1;
+  font-size: 13px;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  word-break: break-all;
+  color: var(--color-text);
+}
+
+.copyBtn {
+  padding: 6px 16px;
+  font-size: 13px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  cursor: pointer;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.copyBtn:hover {
+  background: #f3f4f6;
+}
+
+.loading,
+.empty {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.connectForm {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  outline: none;
+  color: var(--color-text);
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.connectBtn {
+  padding: 8px 20px;
+  font-size: 13px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.connectBtn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.connectBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.connectedInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.connectedRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.remoteId {
+  font-size: 12px;
+  padding: 2px 6px;
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+.disconnectBtn {
+  padding: 4px 12px;
+  font-size: 12px;
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.disconnectBtn:hover {
+  background: #fef2f2;
+}
+
+.error {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-error);
+}
+
+.connectionList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.connectionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}

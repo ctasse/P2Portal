@@ -1,0 +1,34 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow);
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.peerId {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.peerId code {
+  font-size: 12px;
+  padding: 2px 6px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  color: var(--color-text);
+}
