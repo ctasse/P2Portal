@@ -1,0 +1,8 @@
+services:
+  p2portal:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    restart: unless-stopped
