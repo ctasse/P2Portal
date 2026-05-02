@@ -1,13 +1,13 @@
 import type { ChunkMessage, FileChunkMessage, FileInfoMessage } from '../types';
+import type { AppAction } from '../types';
 import { reassembleFile } from './chunking';
-import type { ReactSet } from '../context/reducer';
 
 export const chunksCache = new Map<string, Map<number, string>>();
 
 export function handleIncomingMessage(
   data: unknown,
   remotePeerId: string,
-  dispatch: ReactSet,
+  dispatch: React.Dispatch<AppAction>,
 ): void {
   const msg = data as ChunkMessage;
   if (!msg || !msg.type) return;
@@ -33,7 +33,7 @@ export function handleIncomingMessage(
 function handleFileInfo(
   msg: FileInfoMessage,
   remotePeerId: string,
-  dispatch: ReactSet,
+  dispatch: React.Dispatch<AppAction>,
 ): void {
   dispatch({
     type: 'TRANSFER_INIT',
@@ -56,7 +56,7 @@ function handleFileInfo(
 function handleFileChunk(
   msg: FileChunkMessage,
   remotePeerId: string,
-  dispatch: ReactSet,
+  dispatch: React.Dispatch<AppAction>,
 ): void {
   let chunks = chunksCache.get(msg.transferId);
   if (!chunks) {

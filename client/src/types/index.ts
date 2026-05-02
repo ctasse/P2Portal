@@ -1,18 +1,19 @@
-// ===== Peer & Connection =====
+// ===== App Mode =====
 
-export type PeerStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
+export type AppMode = 'sender' | 'receiver' | null;
+
+// ===== Peer & Connection =====
 
 export interface PeerState {
   id: string | null;
-  status: PeerStatus;
+  status: 'idle' | 'ready' | 'error';
   error: string | null;
+  collisionRetries: number;
 }
 
-export type ConnectionStatus = 'connecting' | 'open' | 'closed' | 'error';
-
 export interface ConnectionState {
-  remotePeerId: string;
-  status: ConnectionStatus;
+  status: 'idle' | 'connecting' | 'open' | 'closed' | 'error';
+  remotePeerId: string | null;
   error: string | null;
 }
 
@@ -74,22 +75,27 @@ export interface FileErrorMessage {
   error: string;
 }
 
-// ===== State / Actions =====
+// ===== App State =====
 
 export interface AppState {
+  mode: AppMode;
+  code: string | null;
   peer: PeerState;
-  connections: ConnectionState[];
+  connection: ConnectionState;
   transfers: Record<string, TransferState>;
 }
 
-export type PeerAction =
-  | { type: 'PEER_INIT'; payload: { id: string } }
-  | { type: 'PEER_STATUS'; payload: { status: PeerStatus; error?: string } }
+// ===== Actions =====
+
+export type AppAction =
+  | { type: 'SET_MODE'; payload: { mode: 'sender' | 'receiver'; code?: string } }
+  | { type: 'PEER_READY'; payload: { id: string } }
   | { type: 'PEER_ERROR'; payload: { error: string } }
-  | { type: 'CONNECTION_REQUESTED'; payload: { remotePeerId: string } }
+  | { type: 'PEER_COLLISION' }
+  | { type: 'CONNECTION_CONNECTING'; payload: { remotePeerId: string } }
   | { type: 'CONNECTION_OPEN'; payload: { remotePeerId: string } }
-  | { type: 'CONNECTION_CLOSED'; payload: { remotePeerId: string; error?: string } }
-  | { type: 'CONNECTION_ERROR'; payload: { remotePeerId: string; error: string } }
+  | { type: 'CONNECTION_CLOSED' }
+  | { type: 'CONNECTION_ERROR'; payload: { error: string } }
   | { type: 'TRANSFER_INIT'; payload: TransferState }
   | { type: 'TRANSFER_PROGRESS'; payload: { transferId: string; receivedChunks: number } }
   | { type: 'TRANSFER_COMPLETE'; payload: { transferId: string; fileBlob: Blob; objectUrl: string } }
@@ -102,6 +108,9 @@ export const SIGNALING_SERVER = import.meta.env.VITE_SIGNALING_SERVER || '0.peer
 export const SIGNALING_PORT = Number(import.meta.env.VITE_SIGNALING_PORT) || 443;
 export const SIGNALING_SECURE = import.meta.env.VITE_SIGNALING_SECURE !== 'false';
 
-export const CHUNK_SIZE = 12 * 1024; // 12KB raw -> ~16KB base64
+export const CHUNK_SIZE = 12 * 1024;
+export const MAX_FILE_SIZE = 500 * 1024 * 1024;
 
-export const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+export const CODE_MIN = 100000;
+export const CODE_MAX = 999999;
+export const MAX_COLLISION_RETRIES = 5;

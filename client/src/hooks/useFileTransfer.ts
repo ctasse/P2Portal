@@ -8,14 +8,12 @@ export function useFileTransfer() {
   const ctx = useContext(PeerContext);
   if (!ctx) throw new Error('useFileTransfer must be used within PeerProvider');
 
-  const { state, dispatch, connectionsRef } = ctx;
+  const { state, dispatch, sendMessage } = ctx;
   const activeTransfers = useRef<Map<string, boolean>>(new Map());
 
   const sendFiles = useCallback(
     async (files: FileList | File[]) => {
-      const fileArray = 'length' in files ? Array.from(files) : [files];
-      const firstConn = connectionsRef.current.values().next().value;
-      if (!firstConn) return;
+      const fileArray = Array.from(files);
 
       for (const file of fileArray) {
         if (file.size > MAX_FILE_SIZE) {
@@ -31,6 +29,7 @@ export function useFileTransfer() {
 
         const transferId = generateId();
         const fileName = sanitizeFileName(file.name);
+        const totalChunks = Math.ceil(file.size / (12 * 1024));
 
         dispatch({
           type: 'TRANSFER_INIT',
@@ -40,29 +39,18 @@ export function useFileTransfer() {
             fileName,
             fileType: file.type,
             fileSize: file.size,
-            totalChunks: Math.ceil(file.size / (12 * 1024)),
+            totalChunks,
             receivedChunks: 0,
             status: 'pending',
             error: null,
-            remotePeerId: firstConn.peer,
+            remotePeerId: state.connection.remotePeerId ?? '',
           },
         });
 
         try {
           dispatch({
-            type: 'TRANSFER_INIT',
-            payload: {
-              transferId,
-              direction: 'upload',
-              fileName,
-              fileType: file.type,
-              fileSize: file.size,
-              totalChunks: Math.ceil(file.size / (12 * 1024)),
-              receivedChunks: 0,
-              status: 'transferring',
-              error: null,
-              remotePeerId: firstConn.peer,
-            },
+            type: 'TRANSFER_PROGRESS',
+            payload: { transferId, receivedChunks: 0 },
           });
 
           const info: FileInfoMessage = {
@@ -71,16 +59,16 @@ export function useFileTransfer() {
             fileName,
             fileType: file.type,
             fileSize: file.size,
-            totalChunks: Math.ceil(file.size / (12 * 1024)),
+            totalChunks,
           };
-          firstConn.send(info);
+          sendMessage(info);
 
           const chunks = await chunkFile(file, transferId);
           activeTransfers.current.set(transferId, true);
 
           for (let i = 0; i < chunks.length; i++) {
             if (!activeTransfers.current.get(transferId)) break;
-            firstConn.send(chunks[i]);
+            sendMessage(chunks[i]);
             if (i % 10 === 0 || i === chunks.length - 1) {
               dispatch({
                 type: 'TRANSFER_PROGRESS',
@@ -114,7 +102,7 @@ export function useFileTransfer() {
         }
       }
     },
-    [connectionsRef, dispatch],
+    [sendMessage, dispatch, state.connection.remotePeerId],
   );
 
   const clearTransfers = useCallback(() => {

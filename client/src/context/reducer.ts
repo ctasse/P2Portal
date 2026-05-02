@@ -1,100 +1,93 @@
 import { createContext } from 'react';
-import type { DataConnection } from 'peerjs';
-import type { AppState, PeerAction } from '../types';
+import type { AppState, AppAction } from '../types';
 
-export type ReactSet = React.Dispatch<PeerAction>;
+export type ReactSet = React.Dispatch<AppAction>;
 
 export interface PeerContextValue {
   state: AppState;
   dispatch: ReactSet;
+  createPeer: (options: { sender: boolean; code?: string }) => void;
   connectToPeer: (remoteId: string) => void;
-  disconnectPeer: (remoteId: string) => void;
-  connectionsRef: React.MutableRefObject<Map<string, DataConnection>>;
+  sendMessage: (message: unknown) => void;
+  resetAll: () => void;
 }
 
 export const PeerContext = createContext<PeerContextValue | null>(null);
 
 export const initialState: AppState = {
-  peer: { id: null, status: 'idle', error: null },
-  connections: [],
+  mode: null,
+  code: null,
+  peer: { id: null, status: 'idle', error: null, collisionRetries: 0 },
+  connection: { status: 'idle', remotePeerId: null, error: null },
   transfers: {},
 };
 
-export function peerReducer(state: AppState, action: PeerAction): AppState {
+export function peerReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
-    case 'PEER_INIT':
+    case 'SET_MODE':
       return {
         ...state,
-        peer: { id: action.payload.id, status: 'connected', error: null },
+        mode: action.payload.mode,
+        code: action.payload.code ?? null,
       };
-    case 'PEER_STATUS':
+
+    case 'PEER_READY':
       return {
         ...state,
-        peer: {
-          ...state.peer,
-          status: action.payload.status,
-          error: action.payload.error ?? null,
-        },
+        peer: { ...state.peer, id: action.payload.id, status: 'ready', error: null },
       };
+
     case 'PEER_ERROR':
       return {
         ...state,
         peer: { ...state.peer, status: 'error', error: action.payload.error },
       };
-    case 'CONNECTION_REQUESTED':
+
+    case 'PEER_COLLISION':
       return {
         ...state,
-        connections: [
-          ...state.connections,
-          {
-            remotePeerId: action.payload.remotePeerId,
-            status: 'connecting',
-            error: null,
-          },
-        ],
+        peer: {
+          ...state.peer,
+          collisionRetries: state.peer.collisionRetries + 1,
+        },
       };
-    case 'CONNECTION_OPEN': {
-      const exists = state.connections.some(
-        (c) => c.remotePeerId === action.payload.remotePeerId,
-      );
-      const connections = exists
-        ? state.connections.map((c) =>
-            c.remotePeerId === action.payload.remotePeerId
-              ? { ...c, status: 'open' as const, error: null }
-              : c,
-          )
-        : [
-            ...state.connections,
-            {
-              remotePeerId: action.payload.remotePeerId,
-              status: 'open' as const,
-              error: null,
-            },
-          ];
-      return { ...state, connections };
-    }
+
+    case 'CONNECTION_CONNECTING':
+      return {
+        ...state,
+        connection: {
+          status: 'connecting',
+          remotePeerId: action.payload.remotePeerId,
+          error: null,
+        },
+      };
+
+    case 'CONNECTION_OPEN':
+      return {
+        ...state,
+        connection: {
+          ...state.connection,
+          status: 'open',
+          error: null,
+        },
+      };
+
     case 'CONNECTION_CLOSED':
       return {
         ...state,
-        connections: action.payload.error
-          ? state.connections.map((c) =>
-              c.remotePeerId === action.payload.remotePeerId
-                ? { ...c, status: 'error', error: action.payload.error ?? null }
-                : c,
-            )
-          : state.connections.filter(
-              (c) => c.remotePeerId !== action.payload.remotePeerId,
-            ),
+        connection: { status: 'closed', remotePeerId: null, error: null },
       };
+
     case 'CONNECTION_ERROR':
       return {
         ...state,
-        connections: state.connections.map((c) =>
-          c.remotePeerId === action.payload.remotePeerId
-            ? { ...c, status: 'error' as const, error: action.payload.error }
-            : c,
-        ),
+        connection: {
+          ...state.connection,
+          status: 'error',
+          error: action.payload.error,
+        },
       };
+
     case 'TRANSFER_INIT':
       return {
         ...state,
@@ -103,6 +96,7 @@ export function peerReducer(state: AppState, action: PeerAction): AppState {
           [action.payload.transferId]: action.payload,
         },
       };
+
     case 'TRANSFER_PROGRESS':
       return {
         ...state,
@@ -115,6 +109,7 @@ export function peerReducer(state: AppState, action: PeerAction): AppState {
           },
         },
       };
+
     case 'TRANSFER_COMPLETE': {
       const existing = state.transfers[action.payload.transferId];
       return {
@@ -130,6 +125,7 @@ export function peerReducer(state: AppState, action: PeerAction): AppState {
         },
       };
     }
+
     case 'TRANSFER_ERROR':
       return {
         ...state,
@@ -142,8 +138,10 @@ export function peerReducer(state: AppState, action: PeerAction): AppState {
           },
         },
       };
+
     case 'RESET':
       return initialState;
+
     default:
       return state;
   }

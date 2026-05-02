@@ -1,23 +1,21 @@
-import { useContext, useMemo } from 'react';
+import { useContext } from 'react';
 import { PeerContext } from '../context/reducer';
 
 export function usePeer() {
   const ctx = useContext(PeerContext);
   if (!ctx) throw new Error('usePeer must be used within PeerProvider');
 
-  const { state, connectToPeer, disconnectPeer } = ctx;
+  const { state, dispatch, createPeer, connectToPeer, sendMessage, resetAll } = ctx;
 
-  const isConnected = useMemo(
-    () =>
-      state.peer.status === 'connected' &&
-      state.connections.some((c) => c.status === 'open'),
-    [state.peer.status, state.connections],
-  );
+  const isConnected = state.connection.status === 'open';
 
   return {
     state,
+    dispatch,
+    createPeer,
     connectToPeer,
-    disconnectPeer,
+    sendMessage,
+    resetAll,
     isConnected,
   };
 }

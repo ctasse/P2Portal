@@ -1,26 +1,40 @@
+import { ThemeProvider, CssBaseline, Container } from '@mui/material';
+import { theme } from './theme';
 import { PeerProvider } from './context/PeerContext';
-import { Header } from './components/Header';
-import { ConnectionPanel } from './components/ConnectionPanel';
-import { TransferPanel } from './components/TransferPanel';
-import styles from './App.module.css';
+import { StartScreen } from './components/StartScreen';
+import { SenderView } from './components/SenderView';
+import { ReceiverView } from './components/ReceiverView';
+import { usePeer } from './hooks/usePeer';
 
 function AppContent() {
+  const { state } = usePeer();
+  const { mode } = state;
+
   return (
-    <div className={styles.app}>
-      <Header />
-      <main className={styles.main}>
-        <ConnectionPanel />
-        <TransferPanel />
-      </main>
-    </div>
+    <Container
+      maxWidth="sm"
+      sx={{
+        py: 3,
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      {mode === null && <StartScreen />}
+      {mode === 'sender' && <SenderView />}
+      {mode === 'receiver' && <ReceiverView />}
+    </Container>
   );
 }
 
 function App() {
   return (
-    <PeerProvider>
-      <AppContent />
-    </PeerProvider>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <PeerProvider>
+        <AppContent />
+      </PeerProvider>
+    </ThemeProvider>
   );
 }
 
