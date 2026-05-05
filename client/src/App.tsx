@@ -4,6 +4,7 @@ import { PeerProvider } from './context/PeerContext';
 import { StartScreen } from './components/StartScreen';
 import { SenderView } from './components/SenderView';
 import { ReceiverView } from './components/ReceiverView';
+import { SettingsPanel } from './components/SettingsPanel';
 import { usePeer } from './hooks/usePeer';
 
 function AppContent() {
@@ -23,6 +24,7 @@ function AppContent() {
       {mode === null && <StartScreen />}
       {mode === 'sender' && <SenderView />}
       {mode === 'receiver' && <ReceiverView />}
+      {state.settingsOpen && <SettingsPanel />}
     </Container>
   );
 }

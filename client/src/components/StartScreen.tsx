@@ -1,5 +1,9 @@
-import { Box, Typography, Button, Stack } from '@mui/material';
-import { Send as SendIcon, Download as DownloadIcon } from '@mui/icons-material';
+import { Box, Typography, Button, Stack, IconButton } from '@mui/material';
+import {
+  Send as SendIcon,
+  Download as DownloadIcon,
+  Settings as SettingsIcon,
+} from '@mui/icons-material';
 import { usePeer } from '../hooks/usePeer';
 
 export function StartScreen() {
@@ -15,8 +19,16 @@ export function StartScreen() {
         justifyContent: 'center',
         gap: 4,
         py: 8,
+        position: 'relative',
       }}
     >
+      <IconButton
+        onClick={() => dispatch({ type: 'TOGGLE_SETTINGS' })}
+        sx={{ position: 'absolute', top: 0, right: 0 }}
+      >
+        <SettingsIcon />
+      </IconButton>
+
       <Box sx={{ textAlign: 'center' }}>
         <Typography variant="h3" component="h1" gutterBottom>
           P2Portal

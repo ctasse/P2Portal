@@ -1,7 +1,7 @@
 import { useContext, useCallback, useRef } from 'react';
 import { PeerContext } from '../context/reducer';
 import { chunkFile, generateId, sanitizeFileName } from '../utils/chunking';
-import { MAX_FILE_SIZE } from '../types';
+import { MAX_FILE_SIZE, RELAY_MAX_SIZE } from '../types';
 import type { FileInfoMessage } from '../types';
 
 export function useFileTransfer() {
@@ -22,6 +22,16 @@ export function useFileTransfer() {
             payload: {
               transferId: generateId(),
               error: `File "${file.name}" exceeds 500MB limit`,
+            },
+          });
+          continue;
+        }
+        if (state.transportMode === 'relay' && file.size > RELAY_MAX_SIZE) {
+          dispatch({
+            type: 'TRANSFER_ERROR',
+            payload: {
+              transferId: generateId(),
+              error: `File "${file.name}" exceeds ${RELAY_MAX_SIZE / 1024 / 1024}MB relay limit`,
             },
           });
           continue;
@@ -102,7 +112,7 @@ export function useFileTransfer() {
         }
       }
     },
-    [sendMessage, dispatch, state.connection.remotePeerId],
+    [sendMessage, dispatch, state.connection.remotePeerId, state.transportMode],
   );
 
   const clearTransfers = useCallback(() => {

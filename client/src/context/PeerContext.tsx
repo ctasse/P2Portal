@@ -1,4 +1,4 @@
-import { useReducer, useRef, useCallback } from 'react';
+import { useReducer, useRef, useCallback, useEffect } from 'react';
 import { Peer } from 'peerjs';
 import type { DataConnection } from 'peerjs';
 import {
@@ -12,34 +12,77 @@ import {
   SIGNALING_PORT,
   SIGNALING_SECURE,
   MAX_COLLISION_RETRIES,
+  RELAY_SERVER_URL,
+  type AppState,
 } from '../types';
 import { handleIncomingMessage } from '../utils/fileTransfer';
 import { generateCode, isCollisionError } from '../utils/code';
+import { RelayClient } from '../utils/relayClient';
+import { loadSettings } from '../utils/storage';
 
-function createPeerOptions() {
-  return {
+function createPeerOptions(signalingConfig: NonNullable<AppState['signalingConfig']> | null) {
+  const cfg = signalingConfig ?? {
     host: SIGNALING_SERVER,
     port: SIGNALING_PORT,
     secure: SIGNALING_SECURE,
     path: import.meta.env.VITE_SIGNALING_PATH || '/',
+  };
+  return {
+    host: cfg.host,
+    port: cfg.port,
+    secure: cfg.secure,
+    path: cfg.path,
     debug: import.meta.env.DEV ? 2 : 0,
   };
 }
 
 export function PeerProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(peerReducer, initialState);
+  const [state, dispatch] = useReducer(peerReducer, initialState, () => {
+    const stored = loadSettings();
+    return {
+      ...initialState,
+      signalingConfig: stored.signalingHost
+        ? {
+            host: stored.signalingHost,
+            port: stored.signalingPort ?? SIGNALING_PORT,
+            secure: stored.signalingSecure ?? SIGNALING_SECURE,
+            path: stored.signalingPath ?? '/',
+          }
+        : null,
+    };
+  });
   const peerRef = useRef<Peer | null>(null);
   const connRef = useRef<DataConnection | null>(null);
+  const relayClientRef = useRef<RelayClient | null>(null);
+  const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function startConnectionTimeout() {
+    clearConnectionTimeout();
+    connectionTimeoutRef.current = setTimeout(() => {
+      dispatch({ type: 'CONNECTION_TIMEOUT' });
+    }, 15000);
+  }
+
+  function clearConnectionTimeout() {
+    if (connectionTimeoutRef.current !== null) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
+    }
+  }
 
   function setupConnection(conn: DataConnection) {
     connRef.current = conn;
 
     conn.on('open', () => {
+      clearConnectionTimeout();
       dispatch({
         type: 'CONNECTION_OPEN',
         payload: { remotePeerId: conn.peer },
       });
-      // Auto-send queued files happens in SenderView via state.connection.status change
+      dispatch({
+        type: 'SET_TRANSPORT_MODE',
+        payload: { mode: 'p2p' },
+      });
     });
 
     conn.on('data', (data: unknown) => {
@@ -64,13 +107,12 @@ export function PeerProvider({ children }: { children: React.ReactNode }) {
       const peerId = sender ? (code ?? generateCode()) : undefined;
 
       const peer = peerId
-        ? new Peer(peerId, createPeerOptions())
-        : new Peer(createPeerOptions());
+        ? new Peer(peerId, createPeerOptions(state.signalingConfig))
+        : new Peer(createPeerOptions(state.signalingConfig));
       peerRef.current = peer;
 
       peer.on('open', (id: string) => {
         if (sender && state.mode === 'sender') {
-          // Store the actual code being used
           dispatch({ type: 'PEER_READY', payload: { id } });
         } else if (!sender) {
           dispatch({ type: 'PEER_READY', payload: { id } });
@@ -86,7 +128,6 @@ export function PeerProvider({ children }: { children: React.ReactNode }) {
           peer.destroy();
           dispatch({ type: 'PEER_COLLISION' });
           const newCode = generateCode();
-          // Update code in state via SET_MODE so UI shows the new code
           dispatch({
             type: 'SET_MODE',
             payload: { mode: 'sender', code: newCode },
@@ -101,15 +142,22 @@ export function PeerProvider({ children }: { children: React.ReactNode }) {
       });
 
       peer.on('disconnected', () => {
-        // PeerJS may reconnect automatically; if it doesn't, we'll get an error
+        // PeerJS may reconnect automatically
       });
     },
-    [state.mode],
+    [state.mode, state.signalingConfig],
   );
 
   const createPeer = useCallback(
     (options: { sender: boolean; code?: string }) => {
-      // Clean up existing peer if any
+      // Clean up existing peer, connection, and relay
+      if (relayClientRef.current) {
+        relayClientRef.current.disconnect();
+        relayClientRef.current = null;
+      }
+      dispatch({ type: 'RELAY_CLOSED' });
+      dispatch({ type: 'SET_TRANSPORT_MODE', payload: { mode: null } });
+
       if (peerRef.current) {
         peerRef.current.destroy();
         peerRef.current = null;
@@ -151,13 +199,72 @@ export function PeerProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const connectRelay = useCallback(
+    (room: string, role: 'sender' | 'receiver') => {
+      // Clean up any existing peer/connection
+      if (peerRef.current) {
+        peerRef.current.destroy();
+        peerRef.current = null;
+      }
+      if (connRef.current) {
+        connRef.current.close();
+        connRef.current = null;
+      }
+
+      dispatch({ type: 'RELAY_CONNECTING' });
+      dispatch({ type: 'SET_TRANSPORT_MODE', payload: { mode: 'relay' } });
+
+      const relayUrl = RELAY_SERVER_URL;
+      const client = new RelayClient();
+      relayClientRef.current = client;
+
+      client.connect(relayUrl, room, role, {
+        onOpen: () => {
+          dispatch({ type: 'RELAY_OPEN' });
+          dispatch({
+            type: 'CONNECTION_OPEN',
+            payload: { remotePeerId: `relay:${room}` },
+          });
+        },
+        onMessage: (data: unknown) => {
+          handleIncomingMessage(data, `relay:${room}`, dispatch);
+        },
+        onClose: () => {
+          dispatch({ type: 'RELAY_CLOSED' });
+          dispatch({ type: 'CONNECTION_CLOSED' });
+          relayClientRef.current = null;
+        },
+        onError: (error: string) => {
+          dispatch({ type: 'RELAY_ERROR', payload: { error } });
+        },
+      });
+    },
+    [],
+  );
+
+  const disconnectRelay = useCallback(() => {
+    if (relayClientRef.current) {
+      relayClientRef.current.disconnect();
+      relayClientRef.current = null;
+    }
+    dispatch({ type: 'RELAY_CLOSED' });
+    dispatch({ type: 'SET_TRANSPORT_MODE', payload: { mode: null } });
+  }, []);
+
   const sendMessage = useCallback((message: unknown) => {
-    if (connRef.current) {
+    if (relayClientRef.current) {
+      relayClientRef.current.send(message);
+    } else if (connRef.current) {
       connRef.current.send(message);
     }
   }, []);
 
   const resetAll = useCallback(() => {
+    clearConnectionTimeout();
+    if (relayClientRef.current) {
+      relayClientRef.current.disconnect();
+      relayClientRef.current = null;
+    }
     if (connRef.current) {
       connRef.current.close();
       connRef.current = null;
@@ -169,6 +276,13 @@ export function PeerProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'RESET' });
   }, []);
 
+  useEffect(() => {
+    return () => {
+      clearConnectionTimeout();
+      relayClientRef.current?.disconnect();
+    };
+  }, []);
+
   const value: PeerContextValue = {
     state,
     dispatch,
@@ -176,6 +290,8 @@ export function PeerProvider({ children }: { children: React.ReactNode }) {
     connectToPeer,
     sendMessage,
     resetAll,
+    connectRelay,
+    disconnectRelay,
   };
 
   return (

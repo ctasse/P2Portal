@@ -5,9 +5,9 @@ export function usePeer() {
   const ctx = useContext(PeerContext);
   if (!ctx) throw new Error('usePeer must be used within PeerProvider');
 
-  const { state, dispatch, createPeer, connectToPeer, sendMessage, resetAll } = ctx;
+  const { state, dispatch, createPeer, connectToPeer, sendMessage, resetAll, connectRelay, disconnectRelay } = ctx;
 
-  const isConnected = state.connection.status === 'open';
+  const isConnected = state.connection.status === 'open' || state.relay.status === 'open';
 
   return {
     state,
@@ -16,6 +16,8 @@ export function usePeer() {
     connectToPeer,
     sendMessage,
     resetAll,
+    connectRelay,
+    disconnectRelay,
     isConnected,
   };
 }

@@ -17,22 +17,25 @@ import {
 import { usePeer } from '../hooks/usePeer';
 import { useFileTransfer } from '../hooks/useFileTransfer';
 import { TransferList } from './TransferList';
+import { RelayFallbackDialog } from './RelayFallbackDialog';
 
 type SenderPhase = 'select' | 'waiting' | 'connected';
 
 export function SenderView() {
-  const { state, createPeer, resetAll, isConnected } = usePeer();
+  const { state, createPeer, resetAll, isConnected, connectRelay } = usePeer();
   const { transfers, sendFiles, clearTransfers } = useFileTransfer();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [copied, setCopied] = useState(false);
   const [phase, setPhase] = useState<SenderPhase>('select');
+  const [showRelayFallback, setShowRelayFallback] = useState(false);
 
   const code = state.code;
 
   useEffect(() => {
     if (isConnected && phase === 'waiting') {
       setPhase('connected');
+      setShowRelayFallback(false);
     }
   }, [isConnected, phase]);
 
@@ -43,6 +46,17 @@ export function SenderView() {
       setSelectedFiles([]);
     }
   }, [isConnected, selectedFiles, sendFiles]);
+
+  // Connection timeout: start when entering 'waiting' phase
+  useEffect(() => {
+    if (phase === 'waiting' && !isConnected) {
+      const timer = setTimeout(() => {
+        // Only show dialog if still waiting and not connected
+        setShowRelayFallback(true);
+      }, 15000);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, isConnected]);
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,12 +86,25 @@ export function SenderView() {
     resetAll();
     setSelectedFiles([]);
     setPhase('select');
+    setShowRelayFallback(false);
   }, [resetAll]);
 
   const handleNewTransfer = useCallback(() => {
     clearTransfers();
     setPhase('select');
   }, [clearTransfers]);
+
+  const handleUseRelay = useCallback(() => {
+    setShowRelayFallback(false);
+    if (code) {
+      connectRelay(code, 'sender');
+    }
+  }, [code, connectRelay]);
+
+  const handleRetryP2P = useCallback(() => {
+    setShowRelayFallback(false);
+    createPeer({ sender: true });
+  }, [createPeer]);
 
   const codeDigits = code ? code.split('') : [];
 
@@ -182,7 +209,14 @@ export function SenderView() {
             {copied ? '已复制' : '复制验证码'}
           </Button>
 
-          {peerError ? (
+          {state.relay.status === 'connecting' ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CircularProgress size={20} />
+              <Typography variant="body2" color="text.secondary">
+                正在连接中继服务器...
+              </Typography>
+            </Box>
+          ) : peerError ? (
             <Box sx={{ textAlign: 'center' }}>
               <Typography color="error" gutterBottom>
                 {state.peer.error || '创建连接失败'}
@@ -223,6 +257,16 @@ export function SenderView() {
               ))}
             </Paper>
           )}
+
+          {/* Relay fallback dialog */}
+          <RelayFallbackDialog
+            open={showRelayFallback}
+            code={code}
+            role="sender"
+            onUseRelay={handleUseRelay}
+            onRetryP2P={handleRetryP2P}
+            onCancel={handleBack}
+          />
         </Box>
       )}
 
@@ -233,6 +277,11 @@ export function SenderView() {
             <CheckIcon color="success" />
             <Typography color="success.main" sx={{ fontWeight: 500 }}>
               已连接
+              {state.transportMode === 'relay' && (
+                <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                  (中继模式)
+                </Typography>
+              )}
             </Typography>
           </Box>
 

@@ -10,6 +10,8 @@ export interface PeerContextValue {
   connectToPeer: (remoteId: string) => void;
   sendMessage: (message: unknown) => void;
   resetAll: () => void;
+  connectRelay: (room: string, role: 'sender' | 'receiver') => void;
+  disconnectRelay: () => void;
 }
 
 export const PeerContext = createContext<PeerContextValue | null>(null);
@@ -20,6 +22,10 @@ export const initialState: AppState = {
   peer: { id: null, status: 'idle', error: null, collisionRetries: 0 },
   connection: { status: 'idle', remotePeerId: null, error: null },
   transfers: {},
+  relay: { status: 'idle', error: null },
+  transportMode: null,
+  signalingConfig: null,
+  settingsOpen: false,
 };
 
 export function peerReducer(state: AppState, action: AppAction): AppState {
@@ -139,8 +145,64 @@ export function peerReducer(state: AppState, action: AppAction): AppState {
         },
       };
 
+    case 'RELAY_CONNECTING':
+      return {
+        ...state,
+        relay: { status: 'connecting', error: null },
+      };
+
+    case 'RELAY_OPEN':
+      return {
+        ...state,
+        relay: { status: 'open', error: null },
+      };
+
+    case 'RELAY_CLOSED':
+      return {
+        ...state,
+        relay: { status: 'closed', error: null },
+      };
+
+    case 'RELAY_ERROR':
+      return {
+        ...state,
+        relay: { status: 'error', error: action.payload.error },
+      };
+
+    case 'SET_TRANSPORT_MODE':
+      return {
+        ...state,
+        transportMode: action.payload.mode,
+      };
+
+    case 'SET_SIGNALING_CONFIG':
+      return {
+        ...state,
+        signalingConfig: action.payload.config,
+      };
+
+    case 'TOGGLE_SETTINGS':
+      return {
+        ...state,
+        settingsOpen: !state.settingsOpen,
+      };
+
+    case 'CONNECTION_TIMEOUT':
+      return {
+        ...state,
+        connection: {
+          ...state.connection,
+          status: 'error',
+          error: '连接超时，无法建立 P2P 直连',
+        },
+      };
+
     case 'RESET':
-      return initialState;
+      return {
+        ...initialState,
+        signalingConfig: state.signalingConfig,
+        settingsOpen: false,
+      };
 
     default:
       return state;

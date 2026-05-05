@@ -17,15 +17,17 @@ import {
 import { usePeer } from '../hooks/usePeer';
 import { useFileTransfer } from '../hooks/useFileTransfer';
 import { TransferList } from './TransferList';
+import { RelayFallbackDialog } from './RelayFallbackDialog';
 import { isValidCode } from '../utils/code';
 
 type ReceiverPhase = 'entry' | 'connecting' | 'receiving' | 'complete';
 
 export function ReceiverView() {
-  const { state, createPeer, connectToPeer, resetAll, isConnected } = usePeer();
+  const { state, createPeer, connectToPeer, resetAll, isConnected, connectRelay } = usePeer();
   const { transfers, clearTransfers } = useFileTransfer();
   const [codeInput, setCodeInput] = useState('');
   const [phase, setPhase] = useState<ReceiverPhase>('entry');
+  const [showRelayFallback, setShowRelayFallback] = useState(false);
 
   const allDone =
     transfers.length > 0 && transfers.every((t) => t.status === 'complete' || t.status === 'error');
@@ -33,6 +35,7 @@ export function ReceiverView() {
   useEffect(() => {
     if (isConnected && phase === 'connecting') {
       setPhase('receiving');
+      setShowRelayFallback(false);
     }
   }, [isConnected, phase]);
 
@@ -41,6 +44,16 @@ export function ReceiverView() {
       setPhase('complete');
     }
   }, [phase, allDone, transfers.length]);
+
+  // Connection timeout when entering 'connecting' phase
+  useEffect(() => {
+    if (phase === 'connecting' && !isConnected) {
+      const timer = setTimeout(() => {
+        setShowRelayFallback(true);
+      }, 15000);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, isConnected]);
 
   const handleConnect = useCallback(() => {
     if (!isValidCode(codeInput)) return;
@@ -53,16 +66,18 @@ export function ReceiverView() {
     if (
       phase === 'connecting' &&
       state.peer.status === 'ready' &&
-      isValidCode(codeInput)
+      isValidCode(codeInput) &&
+      state.relay.status !== 'connecting'
     ) {
       connectToPeer(codeInput);
     }
-  }, [phase, state.peer.status, codeInput, connectToPeer]);
+  }, [phase, state.peer.status, codeInput, connectToPeer, state.relay.status]);
 
   const handleBack = useCallback(() => {
     resetAll();
     setCodeInput('');
     setPhase('entry');
+    setShowRelayFallback(false);
   }, [resetAll]);
 
   const handleNewTransfer = useCallback(() => {
@@ -70,6 +85,19 @@ export function ReceiverView() {
     setCodeInput('');
     setPhase('entry');
   }, [clearTransfers]);
+
+  const handleUseRelay = useCallback(() => {
+    setShowRelayFallback(false);
+    if (codeInput) {
+      setPhase('connecting');
+      connectRelay(codeInput, 'receiver');
+    }
+  }, [codeInput, connectRelay]);
+
+  const handleRetryP2P = useCallback(() => {
+    setShowRelayFallback(false);
+    handleConnect();
+  }, [handleConnect]);
 
   const isCodeValid = isValidCode(codeInput);
   const connectionError = state.connection.status === 'error';
@@ -156,13 +184,15 @@ export function ReceiverView() {
         >
           <CircularProgress />
           <Typography variant="body1" color="text.secondary">
-            正在连接到发送方...
+            {state.relay.status === 'connecting'
+              ? '正在连接中继服务器...'
+              : '正在连接到发送方...'}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
             {codeInput}
           </Typography>
 
-          {(connectionError || peerError) && (
+          {(connectionError || peerError) && !showRelayFallback && (
             <Box sx={{ textAlign: 'center', mt: 2 }}>
               <Typography color="error" gutterBottom>
                 {state.connection.error || state.peer.error || '连接失败，请确认验证码是否正确'}
@@ -178,6 +208,16 @@ export function ReceiverView() {
               </Button>
             </Box>
           )}
+
+          {/* Relay fallback dialog */}
+          <RelayFallbackDialog
+            open={showRelayFallback}
+            code={codeInput}
+            role="receiver"
+            onUseRelay={handleUseRelay}
+            onRetryP2P={handleRetryP2P}
+            onCancel={handleBack}
+          />
         </Box>
       )}
 
@@ -187,7 +227,17 @@ export function ReceiverView() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <CheckIcon color="success" />
             <Typography color="success.main" sx={{ fontWeight: 500 }}>
-              已连接 - 接收中
+              已连接
+              {state.transportMode === 'relay' && (
+                <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                  (中继模式)
+                </Typography>
+              )}
+              {state.transportMode !== 'relay' && (
+                <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                  - 接收中
+                </Typography>
+              )}
             </Typography>
           </Box>
 

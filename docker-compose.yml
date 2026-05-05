@@ -6,3 +6,14 @@ services:
     ports:
       - "8080:80"
     restart: unless-stopped
+
+  relay-server:
+    build:
+      context: ./relay-server
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"
+    restart: unless-stopped
+    environment:
+      - RELAY_PORT=8080
+      - RELAY_MAX_TRANSFER_SIZE=104857600
