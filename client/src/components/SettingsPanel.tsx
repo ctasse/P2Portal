@@ -137,7 +137,7 @@ export function SettingsPanel() {
             onChange={(e) => setRelayUrl(e.target.value)}
             size="small"
             fullWidth
-            placeholder="ws://localhost:8081"
+            placeholder="ws://localhost:8080"
             helperText="用于 P2P 直连失败时的中继传输"
           />
         </Box>

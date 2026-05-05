@@ -65,6 +65,10 @@ export function PeerProvider({ children }: { children: React.ReactNode }) {
 
   function setupConnection(conn: DataConnection) {
     connRef.current = conn;
+    dispatch({
+      type: 'CONNECTION_CONNECTING',
+      payload: { remotePeerId: conn.peer },
+    });
 
     conn.on('open', () => {
       clearConnectionTimeout();
@@ -207,7 +211,7 @@ export function PeerProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'RELAY_CONNECTING' });
       dispatch({ type: 'SET_TRANSPORT_MODE', payload: { mode: 'relay' } });
 
-      const relayUrl = RELAY_SERVER_URL;
+      const relayUrl = loadSettings().relayUrl || RELAY_SERVER_URL;
       const client = new RelayClient();
       relayClientRef.current = client;
 

@@ -45,15 +45,15 @@ export function ReceiverView() {
     }
   }, [phase, allDone, transfers.length]);
 
-  // Connection timeout when entering 'connecting' phase
+  // Connection timeout: start when connecting (both sides entered code)
   useEffect(() => {
-    if (phase === 'connecting' && !isConnected) {
+    if (phase === 'connecting' && !isConnected && state.transportMode !== 'relay') {
       const timer = setTimeout(() => {
         setShowRelayFallback(true);
       }, 15000);
       return () => clearTimeout(timer);
     }
-  }, [phase, isConnected]);
+  }, [phase, isConnected, state.transportMode]);
 
   const handleConnect = useCallback(() => {
     if (!isValidCode(codeInput)) return;

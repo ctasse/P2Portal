@@ -154,6 +154,6 @@ export const CODE_MIN = 100000;
 export const CODE_MAX = 999999;
 export const MAX_COLLISION_RETRIES = 5;
 
-export const RELAY_SERVER_URL = import.meta.env.VITE_RELAY_SERVER_URL || 'ws://localhost:8081';
+export const RELAY_SERVER_URL = import.meta.env.VITE_RELAY_SERVER_URL || 'ws://localhost:8080';
 export const RELAY_MAX_SIZE = 100 * 1024 * 1024; // 100MB soft limit
 export const CONNECTION_TIMEOUT_MS = 15_000;

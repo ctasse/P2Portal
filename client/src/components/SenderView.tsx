@@ -47,16 +47,15 @@ export function SenderView() {
     }
   }, [isConnected, selectedFiles, sendFiles]);
 
-  // Connection timeout: start when entering 'waiting' phase
+  // Connection timeout: start when receiver connects (both sides entered code)
   useEffect(() => {
-    if (phase === 'waiting' && !isConnected) {
+    if (state.connection.status === 'connecting' && state.transportMode !== 'relay') {
       const timer = setTimeout(() => {
-        // Only show dialog if still waiting and not connected
         setShowRelayFallback(true);
       }, 15000);
       return () => clearTimeout(timer);
     }
-  }, [phase, isConnected]);
+  }, [state.connection.status, state.transportMode]);
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
