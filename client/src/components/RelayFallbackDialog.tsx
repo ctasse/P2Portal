@@ -27,7 +27,6 @@ interface RelayFallbackDialogProps {
 export function RelayFallbackDialog({
   open,
   code,
-  role,
   onUseRelay,
   onRetryP2P,
   onCancel,

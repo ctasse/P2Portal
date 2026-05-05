@@ -56,13 +56,6 @@ export function PeerProvider({ children }: { children: React.ReactNode }) {
   const relayClientRef = useRef<RelayClient | null>(null);
   const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function startConnectionTimeout() {
-    clearConnectionTimeout();
-    connectionTimeoutRef.current = setTimeout(() => {
-      dispatch({ type: 'CONNECTION_TIMEOUT' });
-    }, 15000);
-  }
-
   function clearConnectionTimeout() {
     if (connectionTimeoutRef.current !== null) {
       clearTimeout(connectionTimeoutRef.current);
