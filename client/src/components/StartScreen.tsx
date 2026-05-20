@@ -11,6 +11,7 @@ export function StartScreen() {
 
   return (
     <Box
+      className="view-container"
       sx={{
         flex: 1,
         display: 'flex',

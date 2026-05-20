@@ -212,6 +212,10 @@ export function PeerProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_TRANSPORT_MODE', payload: { mode: 'relay' } });
 
       const relayUrl = loadSettings().relayUrl || RELAY_SERVER_URL;
+      if (!relayUrl) {
+        dispatch({ type: 'RELAY_ERROR', payload: { error: '未配置中继服务器地址' } });
+        return;
+      }
       const client = new RelayClient();
       relayClientRef.current = client;
 

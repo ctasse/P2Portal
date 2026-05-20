@@ -17,7 +17,6 @@ import {
   SIGNALING_SERVER,
   SIGNALING_PORT,
   SIGNALING_SECURE,
-  RELAY_SERVER_URL,
 } from '../types';
 import { loadSettings, saveSettings, clearSettings } from '../utils/storage';
 
@@ -37,9 +36,7 @@ export function SettingsPanel() {
   const [path, setPath] = useState(
     state.signalingConfig?.path ?? stored.signalingPath ?? '/',
   );
-  const [relayUrl, setRelayUrl] = useState(
-    stored.relayUrl ?? RELAY_SERVER_URL,
-  );
+  const [relayUrl, setRelayUrl] = useState(stored.relayUrl ?? '');
 
   const handleClose = () => {
     dispatch({ type: 'TOGGLE_SETTINGS' });
@@ -69,7 +66,7 @@ export function SettingsPanel() {
     setPort(String(SIGNALING_PORT));
     setSecure(SIGNALING_SECURE);
     setPath('/');
-    setRelayUrl(RELAY_SERVER_URL);
+    setRelayUrl('');
     dispatch({
       type: 'SET_SIGNALING_CONFIG',
       payload: {
@@ -132,13 +129,13 @@ export function SettingsPanel() {
             中继服务器
           </Typography>
           <TextField
-            label="WebSocket 地址"
+            label="WebSocket 地址 (可选)"
             value={relayUrl}
             onChange={(e) => setRelayUrl(e.target.value)}
             size="small"
             fullWidth
-            placeholder="ws://localhost:8080"
-            helperText="用于 P2P 直连失败时的中继传输"
+            placeholder="留空则使用默认服务器"
+            helperText="仅当需要使用自定义中继服务器时填写"
           />
         </Box>
       </DialogContent>

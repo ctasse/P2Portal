@@ -14,6 +14,7 @@ import {
   CloudUpload as UploadIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
+import { animate, stagger } from 'animejs';
 import { usePeer } from '../hooks/usePeer';
 import { useFileTransfer } from '../hooks/useFileTransfer';
 import { TransferList } from './TransferList';
@@ -107,10 +108,23 @@ export function SenderView() {
 
   const codeDigits = code ? code.split('') : [];
 
+  useEffect(() => {
+    if (codeDigits.length === 6) {
+      animate('.code-digit', {
+        scale: [0, 1],
+        opacity: [0, 1],
+        translateY: [20, 0],
+        delay: stagger(80),
+        easing: 'easeOutElastic(1, .5)',
+        duration: 800,
+      });
+    }
+  }, [code]);
+
   const peerError = state.peer.status === 'error';
 
   return (
-    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box className="view-container" sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <IconButton onClick={handleBack} edge="start">
@@ -171,20 +185,21 @@ export function SenderView() {
             您的传输验证码
           </Typography>
 
-          {/* 6-digit code display - 2x3 grid */}
+          {/* 6-digit code display - single row */}
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
+              gridTemplateColumns: 'repeat(6, 1fr)',
               gap: 1.5,
             }}
           >
             {codeDigits.map((digit, i) => (
               <Paper
                 key={i}
+                className="code-digit"
                 sx={{
-                  width: 56,
-                  height: 64,
+                  width: 72,
+                  height: 72,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -192,7 +207,7 @@ export function SenderView() {
                   color: 'white',
                 }}
               >
-                <Typography variant="h4" sx={{ fontFamily: 'monospace', fontWeight: 700 }}>
+                <Typography variant="h4" sx={{ fontFamily: '"Nunito", "Roboto", sans-serif', fontWeight: 800 }}>
                   {digit}
                 </Typography>
               </Paper>

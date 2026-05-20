@@ -104,7 +104,7 @@ export function ReceiverView() {
   const peerError = state.peer.status === 'error';
 
   return (
-    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box className="view-container" sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <IconButton onClick={handleBack} edge="start">
@@ -148,7 +148,7 @@ export function ReceiverView() {
                   textAlign: 'center',
                   fontSize: '2rem',
                   letterSpacing: '0.5em',
-                  fontFamily: 'monospace',
+                  fontFamily: '"Nunito", "Roboto", sans-serif',
                 },
               },
             }}
@@ -253,19 +253,13 @@ export function ReceiverView() {
 
       {/* Phase: Complete */}
       {phase === 'complete' && (
-        <Box
-          sx={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 2,
-          }}
-        >
-          <CheckIcon sx={{ fontSize: 64, color: 'success.main' }} />
-          <Typography variant="h6" color="success.main">
-            传输完成!
-          </Typography>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <CheckIcon color="success" />
+            <Typography variant="h6" color="success.main">
+              传输完成!
+            </Typography>
+          </Box>
 
           <TransferList transfers={transfers} />
 
